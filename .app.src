@@ -1,0 +1,13 @@
+{application, hyper,
+ [{description, "Implementation of the HyperLogLog algorithm in Erlang"},
+  {vsn, "<APPVSN>"},
+  {registered, []},
+  {modules, []},
+  {applications, [
+                 kernel
+                 ,stdlib
+                 ,cowboy
+                 ]},
+  {mod, {<APPNAME>_app, []}},
+  {env, []}
+ ]}.
