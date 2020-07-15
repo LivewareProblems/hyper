@@ -24,7 +24,6 @@ hyper_test_() ->
      [?_test(is_hyper_t()),
       ?_test(basic_t()),
       ?_test(serialization_t()),
-    %   ?_test(reduce_precision_t()),
       {timeout, 60, ?_test(backend_t())},
       ?_test(encoding_t()),
       ?_test(register_sum_t()),
@@ -39,6 +38,7 @@ hyper_test_() ->
       {"Union property with hyper_gb", RunProp(prop_union(hyper_gb))},
       RunProp(prop_set()),
       RunProp(prop_serialize())]}.
+%%?_test(reduce_precision_t()),
 
 is_hyper_t() ->
     ?assert(hyper:is_hyper(hyper:new(4, hyper_binary))),
