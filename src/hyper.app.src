@@ -1,6 +1,6 @@
 {application, hyper,
  [
-  {description, ""},
+  {description, "Implementation of the HyperLogLog algorithm in Erlang"},
   {vsn, "1.0"},
   {registered, []},
   {applications, [

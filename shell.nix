@@ -2,7 +2,7 @@
 
 with pkgs;
 mkShell {
-  buildInputs = [ erlangR23 ];
+  buildInputs = [ erlangR23 rebar3 ];
 
   # Fix GLIBC Locale
   LOCALE_ARCHIVE = stdenv.lib.optionalString stdenv.isLinux
