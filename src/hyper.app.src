@@ -1,11 +1,12 @@
 {application, hyper,
- [
-  {description, "Implementation of the HyperLogLog algorithm in Erlang"},
-  {vsn, "1.0"},
+ [{description, "Implementation of the HyperLogLog algorithm in Erlang"},
+  {vsn, "0.2.0"},
   {registered, []},
+  {modules, []},
   {applications, [
-                  kernel,
-                  stdlib
+                 kernel
+                 ,stdlib
                  ]},
-  {env, []}
+  {licenses, ["MIT"]},
+  {links, [{"Github", "https://github.com/Always-Up-BEAM/hyper"}]}
  ]}.
