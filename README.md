@@ -1,5 +1,8 @@
 # HyperLogLog for Erlang
 
+![Hex.pm](https://img.shields.io/hexpm/v/hyper?style=flat-square)
+![Hex.pm](https://img.shields.io/hexpm/l/hyper?style=flat-square)
+
 This is an implementation of the HyperLogLog algorithm in
 Erlang. Using HyperLogLog you can estimate the cardinality of very
 large data sets using constant memory. The relative error is `1.04 *
@@ -19,6 +22,11 @@ correction from HLL++ as the described in the excellent
 [paper by Google][]. Bias correction greatly improves the estimates
 for lower cardinalities.
 
+## Known problems
+
+* no documentation
+* Test suite is ... fiddly
+* one test seems broken, pointing to a possible bug. Not researched yet
 
 ## Usage
 
@@ -34,10 +42,11 @@ for lower cardinalities.
 ```
 
 The errors introduced by estimations can be seen in this example:
+
 ```erlang
-3> random:seed(1,2,3).
+3> rand:seed(exsss, {1, 2, 3}).
 undefined
-4> Run = fun (P, Card) -> hyper:card(lists:foldl(fun (_, H) -> Int = random:uniform(10000000000000), hyper:insert(<<Int:64/integer>>, H) end, hyper:new(P), lists:seq(1, Card))) end.
+4> Run = fun (P, Card) -> hyper:card(lists:foldl(fun (_, H) -> Int = rand:uniform(10000000000000), hyper:insert(<<Int:64/integer>>, H) end, hyper:new(P), lists:seq(1, Card))) end.
 #Fun<erl_eval.12.80484245>
 5> Run(12, 10000).
 9992.846462080579
@@ -48,6 +57,7 @@ undefined
 ```
 
 A filter can be persisted and read later. The serialized struct is formatted for usage with jiffy:
+
 ```erlang
 8> Filter = hyper:insert(<<"foo">>, hyper:new(4)).
 {hyper,4,
@@ -73,10 +83,9 @@ true
      in function  hyper:union/1 (src/hyper.erl, line 65)
 ```
 
-
 ## Is it any good?
 
-Yes. At Game Analytics we use it extensively.
+Yes. It has been used in mAt Game Analytics we use it extensively.
 
 ## Backends
 
@@ -87,32 +96,25 @@ comparison can be seen by running `make perf_report`, see below for
 the results from an i7-3770 at 3.4 GHz. Fill rate refers to how many
 registers has a value other than 0.
 
- * `hyper_binary`: Fixed memory usage (6 bits * 2^P), fastest on insert,
-   union, cardinality and serialization. Best default choice.
+* `hyper_binary`: Fixed memory usage (6 bits * 2^P), fastest on insert,
+  union, cardinality and serialization. Best default choice.
 
- * `hyper_bisect`: Lower memory usage at lower fill rates (3 bytes per
-   used entry), slightly slower than hyper_binary for
-   everything. Switches to a structure similar to hyper_binary when it
-   would save memory. Room for further optimization.
+* `hyper_gb`: Fast inserts, very fast unions and reasonable memory
+  usage at low fill rates. Unreasonable memory usage at high fill
+  rates.
 
- * `hyper_gb`: Fast inserts, very fast unions and reasonable memory
-   usage at low fill rates. Unreasonable memory usage at high fill
-   rates.
+* `hyper_array`: Cardinality estimation is constant, but slower than
+  hyper_gb for low fill rates. Uses much more memory at lower fill
+  rates, but stays constant from 25% and upwards.
 
- * `hyper_array`: Cardinality estimation is constant, but slower than
-   hyper_gb for low fill rates. Uses much more memory at lower fill
-   rates, but stays constant from 25% and upwards.
-
- * `hyper_binary_rle`: Dud
+* `hyper_binary_rle`: Dud
 
 You can also implement your own backend. In `hyper_test` theres a
 bunch of tests run for all backends, including some PropEr tests. The
 test suite will ensure your backend gives correct estimates and
 correctly encodes/decodes the serialized filters.
 
-
-
-```
+```bash
 $ make perf_report
 ...
 
@@ -141,18 +143,6 @@ hyper_array  15      25000   0.53     323384       1.21      11.07       5.18   
 hyper_array  15      50000   0.78     323560       1.04      17.90       5.51       8.08
 hyper_array  15     100000   0.95     323560       1.00      26.93       5.60       7.70
 hyper_array  15    1000000   1.00     323560       0.72      51.65       5.77       7.77
-hyper_bisect 15          1   0.00          3       6.10       0.00       0.05       7.26
-hyper_bisect 15        100   0.00        297       1.62       0.08       0.12      17.42
-hyper_bisect 15        500   0.02       1482       1.72       0.42       0.59      21.30
-hyper_bisect 15       1000   0.03       2952       1.83       0.95       1.10      23.21
-hyper_bisect 15       2500   0.07       7227       1.97       2.63       2.53      25.91
-hyper_bisect 15       5000   0.14      13890       2.23       6.50       5.06      28.80
-hyper_bisect 15      10000   0.26      25833       2.74      18.21       9.18      31.61
-hyper_bisect 15      15000   0.37      32768       3.67      33.29       4.40       4.46
-hyper_bisect 15      25000   0.53      32768       3.11      78.77       4.60       5.17
-hyper_bisect 15      50000   0.78      32768       2.53     190.66       4.90       4.89
-hyper_bisect 15     100000   0.95      32768       2.05     381.11       5.07       4.43
-hyper_bisect 15    1000000   1.00      32768       0.85      27.17       5.65       4.59
 hyper_binary 15          1   0.00         88       3.40       0.00       6.06       2.23
 hyper_binary 15        100   0.00       4048       0.63       0.01       5.91       2.38
 hyper_binary 15        500   0.02      20048       0.50       0.01       5.67       2.58
@@ -166,5 +156,15 @@ hyper_binary 15      50000   0.76      24576       0.92      13.55       2.81   
 hyper_binary 15     100000   0.95      24576       0.79      11.74       2.59       5.16
 hyper_binary 15    1000000   1.00      24576       0.55      13.88       2.64       5.11
 ```
+
+## Fork
+
+This is a fork of the original Hyper library by GameAnalytics. It was not maintained anymore.
+
+The main difference are a move to the `rand` module for tests and to `rebar3` as a build tool, in order to support OTP 23+.
+
+The `carray` backend was dropped, as it was never moved outside of experimental status and could not be serialised for a distributed use.
+
+The bisect implementation was dropped too. Its use case was limited and it forced a dependency on a library that was not maintained either.
 
 [paper by Google]: http://static.googleusercontent.com/external_content/untrusted_dlcp/research.google.com/en//pubs/archive/40671.pdf
