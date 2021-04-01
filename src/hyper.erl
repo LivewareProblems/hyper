@@ -205,4 +205,3 @@ nearest_neighbours(E, Vector) ->
 
     {_, Indexes} = lists:unzip(lists:sublist(SortedDistances, 6)),
     Indexes.
-

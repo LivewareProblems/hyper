@@ -75,8 +75,13 @@ set(Index, Value, #dense{buf = Buf, buf_size = BufSize} = Dense) ->
     end.
 
 
-compact(#buffer{} = Buffer) ->
-    Buffer;
+compact(#buffer{buf_size = BufSize, convert_threshold = ConvertThreshold} = Buffer) ->
+    case BufSize < ConvertThreshold of
+    true ->
+        Buffer;
+    false ->
+        buffer2dense(Buffer)
+    end;
 
 compact(#dense{b = B, buf = Buf} = Dense) ->
     NewB = merge_buf(B, max_registers(Buf)),
