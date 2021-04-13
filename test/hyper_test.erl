@@ -35,7 +35,6 @@ hyper_test_() ->
       ?_test(bad_serialization_t()),
       {"Union property with hyper_binary", RunProp(prop_union(hyper_binary))},
       {"Union property with hyper_array", RunProp(prop_union(hyper_array))},
-      {"Union property with hyper_gb", RunProp(prop_union(hyper_gb))},
       RunProp(prop_set()),
       RunProp(prop_serialize())]}.
 %%?_test(reduce_precision_t()),
@@ -85,17 +84,15 @@ backend_t() ->
     P = 9,
     M = trunc(math:pow(2, P)),
 
-    Gb = hyper:compact(hyper:insert_many(Values, hyper:new(P, hyper_gb))),
     Array = hyper:compact(hyper:insert_many(Values, hyper:new(P, hyper_array))),
     Binary = hyper:compact(hyper:insert_many(Values, hyper:new(P, hyper_binary))),
 
-    {hyper_gb, GbRegisters} = Gb#hyper.registers,
     {hyper_array, ArrayRegisters} = Array#hyper.registers,
     {hyper_binary, BinaryRegisters} = Binary#hyper.registers,
 
     ExpectedRegisters = lists:foldl(fun (Value, Registers) ->
                                             Hash = crypto:hash(sha, Value),
-                                            <<Index:P, RegisterValue:P/bitstring, _/bitstring>> =
+                                            <<Index:P, RegisterValue:(64 - P)/bitstring, _/bitstring>> =
                                                 Hash,
                                             ZeroCount = hyper:run_of_zeroes(RegisterValue) + 1,
                                             case dict:find(Index, Registers) of
@@ -116,19 +113,15 @@ backend_t() ->
                                         end
                                       end
                                       || I <- lists:seq(0, M - 1)]),
-    ?assertEqual(ExpectedBytes, hyper_gb:encode_registers(GbRegisters)),
     ?assertEqual(ExpectedBytes, hyper_array:encode_registers(ArrayRegisters)),
     ?assertEqual(ExpectedBytes, hyper_binary:encode_registers(BinaryRegisters)),
 
-    ?assertEqual(hyper:card(Gb), hyper:card(hyper:from_json(hyper:to_json(Array), hyper_gb))),
     ?assertEqual(Array, hyper:from_json(hyper:to_json(Array), hyper_array)),
     ?assertEqual(Binary, hyper:from_json(hyper:to_json(Binary), hyper_binary)),
 
-    ?assertEqual(hyper:to_json(Gb), hyper:to_json(Array)),
-    ?assertEqual(hyper:to_json(Gb), hyper:to_json(Binary)),
+    ?assertEqual(hyper:to_json(Binary), hyper:to_json(Array)),
 
-    ?assertEqual(hyper:card(Gb), hyper:card(Array)),
-    ?assertEqual(hyper:card(Gb), hyper:card(Binary)).
+    ?assertEqual(hyper:card(Binary), hyper:card(Array)).
 
 encoding_t() ->
     [begin
