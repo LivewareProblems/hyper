@@ -302,7 +302,7 @@ bad_serialization_t() ->
 %%
 
 backends() ->
-    [hyper_gb, hyper_array, hyper_binary].
+    [hyper_array, hyper_binary].
 
 gen_values() ->
     ?SIZED(Size, gen_values(Size)).

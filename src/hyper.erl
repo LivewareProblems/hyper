@@ -49,7 +49,7 @@ is_hyper(_) ->
 insert(Value, #hyper{registers = {Mod, Registers}, p = P} = Hyper)
     when is_binary(Value) ->
     Hash = crypto:hash(sha, Value),
-    <<Index:P, RegisterValue:P/bitstring, _/bitstring>> = Hash,
+    <<Index:P, RegisterValue:(64 - P)/bitstring, _/bitstring>> = Hash,
 
     ZeroCount = run_of_zeroes(RegisterValue) + 1,
 

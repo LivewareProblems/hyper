@@ -26,7 +26,8 @@ for lower cardinalities.
 
 * no documentation
 * Test suite is ... fiddly
-* one test seems broken, pointing to a possible bug. Not researched yet
+* one test seems broken, pointing to a possible bug.
+* That bug is that the estimator is broken for any precision not 14. WIP to fix
 
 ## Usage
 
@@ -99,15 +100,9 @@ registers has a value other than 0.
 * `hyper_binary`: Fixed memory usage (6 bits * 2^P), fastest on insert,
   union, cardinality and serialization. Best default choice.
 
-* `hyper_gb`: Fast inserts, very fast unions and reasonable memory
-  usage at low fill rates. Unreasonable memory usage at high fill
-  rates.
-
 * `hyper_array`: Cardinality estimation is constant, but slower than
   hyper_gb for low fill rates. Uses much more memory at lower fill
   rates, but stays constant from 25% and upwards.
-
-* `hyper_binary_rle`: Dud
 
 You can also implement your own backend. In `hyper_test` theres a
 bunch of tests run for all backends, including some PropEr tests. The
@@ -119,18 +114,6 @@ $ make perf_report
 ...
 
 module       P        card   fill      bytes  insert us   union ms    card ms    json ms
-hyper_gb     15          1   0.00         64     301.90       0.00       0.10       2.69
-hyper_gb     15        100   0.00       3984       1.34       0.05       0.05       6.13
-hyper_gb     15        500   0.02      19784       1.53       0.27       0.12       8.67
-hyper_gb     15       1000   0.03      39384       1.72       0.53       0.19       8.67
-hyper_gb     15       2500   0.07      96384       1.84       1.49       0.40      10.67
-hyper_gb     15       5000   0.14     185224       1.99       3.24       0.71      12.22
-hyper_gb     15      10000   0.26     344464       2.10       6.80       1.31      15.09
-hyper_gb     15      15000   0.37     481664       2.02      10.07       1.91      17.99
-hyper_gb     15      25000   0.53     698344       2.08      16.42       2.67      18.71
-hyper_gb     15      50000   0.78    1027504       1.96      31.49       4.29      18.87
-hyper_gb     15     100000   0.95    1248144       1.78      49.90       5.20      17.92
-hyper_gb     15    1000000   1.00    1310744       1.10     108.38       5.72      18.96
 hyper_array  15          1   0.00        520       4.10       0.00       4.74       3.83
 hyper_array  15        100   0.00      19536       1.56       0.10       4.71       3.99
 hyper_array  15        500   0.02      69328       1.44       0.43       4.63       4.46
@@ -166,5 +149,10 @@ The main difference are a move to the `rand` module for tests and to `rebar3` as
 The `carray` backend was dropped, as it was never moved outside of experimental status and could not be serialised for a distributed use.
 
 The bisect implementation was dropped too. Its use case was limited and it forced a dependency on a library that was not maintained either.
+
+The gb backend was dropped for the time being too.
+
+The estimator was rebuilt following this paper, as it was broken for any precision not 14): <https://arxiv.org/abs/1706.07290>.
+This should also provide better estimation across the board and cardinality.
 
 [paper by Google]: http://static.googleusercontent.com/external_content/untrusted_dlcp/research.google.com/en//pubs/archive/40671.pdf
