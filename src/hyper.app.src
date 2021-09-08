@@ -1,6 +1,6 @@
 {application, hyper,
  [{description, "Implementation of the HyperLogLog algorithm in Erlang"},
-  {vsn, "0.2.3"},
+  {vsn, "0.3.0"},
   {registered, []},
   {modules, []},
   {applications, [
@@ -8,5 +8,5 @@
                  ,stdlib
                  ]},
   {licenses, ["MIT"]},
-  {links, [{"Github", "https://github.com/Always-Up-BEAM/hyper"}]}
+  {links, [{"Github", "https://github.com/LivewareProblems/hyper"}]}
  ]}.
