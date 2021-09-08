@@ -9,7 +9,7 @@ hyper_test_() ->
     ProperOpts = [{max_size, 1000}, {numtests, 100}, {to_file, user}, long_result],
     RunProp = fun (P) ->
                       {timeout,
-                       600,
+                       60000,
                        fun () ->
                                ?assert(proper:quickcheck(P, ProperOpts))
                        end}
@@ -28,16 +28,16 @@ hyper_test_() ->
       ?_test(encoding_t()),
       ?_test(register_sum_t()),
       {timeout, 30, ?_test(error_range_t())},
+      ?_test(reduce_precision_t()),
       ?_test(many_union_t()),
       ?_test(union_t()),
       ?_test(union_mixed_precision_t()),
       ?_test(intersect_card_t()),
       ?_test(bad_serialization_t()),
       {"Union property with hyper_binary", RunProp(prop_union(hyper_binary))},
-      {"Union property with hyper_array", RunProp(prop_union(hyper_array))},
+    %   {"Union property with hyper_array", RunProp(prop_union(hyper_array))},
       RunProp(prop_set()),
       RunProp(prop_serialize())]}.
-%%?_test(reduce_precision_t()),
 
 is_hyper_t() ->
     ?assert(hyper:is_hyper(hyper:new(4, hyper_binary))),
@@ -57,27 +57,19 @@ serialization_t() ->
 
 reduce_precision_t() ->
     rand:seed(exsss, {1, 2, 3}),
-    Card = 10000,
+    Card = 10_000,
     Values = generate_unique(Card),
     [begin
        HighRes = hyper:insert_many(Values, hyper:new(16, Mod)),
        lists:foreach(fun (P) ->
                              Estimate = hyper:card(hyper:reduce_precision(P, HighRes)),
-                             % accept error rate for one precision step less
-                             M = trunc(math:pow(2, P - 1)),
+                             M = trunc(math:pow(2, P)),
                              Error = 1.04 / math:sqrt(M),
-                             erlang:display(Card),
-                             erlang:display(P),
-                             erlang:display(M),
-                             erlang:display(Estimate),
-                             erlang:display(Error),
-                             erlang:display(Estimate - Card),
-                             erlang:display(Card * Error),
                              ?assert(abs(Estimate - Card) < Card * Error)
                      end,
-                     lists:seq(4, 15))
-     end || Mod <- [hyper_binary]].
-    % end || Mod <- backends()].
+                    %  [15])
+                     lists:seq(10, 15))
+    end || Mod <- backends()].
 
 backend_t() ->
     Values = generate_unique(10000),
@@ -180,7 +172,7 @@ error_range_t() ->
        Estimate = trunc(hyper:card(Run(Card, P, Mod))),
        ?assert(abs(Estimate - Card) < Card * ExpectedError)
      end
-     || Card <- lists:seq(1000, 50000, 5000), Mod <- Mods].
+     || Card <- lists:seq(1_000, 50_000, 5_000), Mod <- Mods].
 
 many_union_t() ->
     rand:seed(exsss, {1, 2, 3}),
@@ -214,11 +206,11 @@ many_union_t() ->
              ?assert(false)
        end
      end
-     || Mod <- [hyper_binary_rle], P <- [15]].
+     || Mod <- backends(), P <- [15]].
 
 union_t() ->
     rand:seed(exsss, {1, 2, 3}),
-    Mod = hyper_binary_rle,
+    Mod = hyper_binary,
 
     LeftDistinct = sets:from_list(generate_unique(100)),
 
@@ -239,8 +231,7 @@ union_mixed_precision_t() ->
                                                 hyper:insert(<<"2">>, hyper:new(6, Mod)),
                                                 hyper:insert(<<"3">>, hyper:new(8, Mod)),
                                                 hyper:insert(<<"4">>, hyper:new(16, Mod))]))))
-     %|| Mod <- backends()].
-     || Mod <- [hyper_binary]].
+     || Mod <- backends()].
 
 intersect_card_t() ->
     rand:seed(exsss, {1, 2, 3}),
@@ -428,7 +419,7 @@ random_bytes(N) ->
 random_bytes(Acc, 0) ->
     Acc;
 random_bytes(Acc, N) ->
-    Int = rand:uniform(100000000000000),
+    Int = rand:uniform(1 bsl 64),
     random_bytes([<<Int:64/integer>> | Acc], N - 1).
 
 %% Lifted from stdlib2, https://github.com/cannedprimates/stdlib2

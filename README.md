@@ -17,17 +17,24 @@ filters they receive. The filter you end up with is exactly the same
 filter as if you would sequentially insert all data into a single
 filter.
 
-In addition to the base algorithm, we have implemented the bias
-correction from HLL++ as the described in the excellent
-[paper by Google][]. Bias correction greatly improves the estimates
-for lower cardinalities.
+In addition to the base algorithm, we have implemented the new estimator as
+based on Mean Limit as described this great [paper by Otmar Ertl][].
+This new estimator greatly improves the estimates for lower cardinalities while
+using a single estimator for the whole range of cardinalities.
 
-## Known problems
+## TODO
 
-* no documentation
-* Test suite is ... fiddly
-* one test seems broken, pointing to a possible bug.
-* That bug is that the estimator is broken for any precision not 14. WIP to fix
+- [x] Use rebar3
+- [x] Work on OTP 23
+- [x] Fix the estimator
+- [x] Fix `reduce_precision`
+- [x] add `reduce_precision` for array, allowing unions
+- [ ] Better document the main module
+- [ ] Move documentation to ExDoc
+- [ ] Delete dead code
+- [ ] Rework test suite to be nice to modify
+- [ ] Rework Intersection using this [paper by Otmar Ertl][]
+- [ ] Redo benchmarks
 
 ## Usage
 
@@ -46,15 +53,19 @@ The errors introduced by estimations can be seen in this example:
 
 ```erlang
 3> rand:seed(exsss, {1, 2, 3}).
-undefined
+{#{bits => 58,jump => #Fun<rand.3.47293030>,
+   next => #Fun<rand.0.47293030>,type => exsss,
+   uniform => #Fun<rand.1.47293030>,
+   uniform_n => #Fun<rand.2.47293030>},
+ [117085240290607817|199386643319833935]}
 4> Run = fun (P, Card) -> hyper:card(lists:foldl(fun (_, H) -> Int = rand:uniform(10000000000000), hyper:insert(<<Int:64/integer>>, H) end, hyper:new(P), lists:seq(1, Card))) end.
 #Fun<erl_eval.12.80484245>
-5> Run(12, 10000).
-9992.846462080579
-6> Run(14, 10000).
-10055.568563614219
-7> Run(16, 10000).
-10007.654167606248
+5> Run(12, 10_000).
+10038.192365345985
+6> Run(14, 10_000).
+9967.916262642864
+7> Run(16, 10_000).
+9972.832893293473
 ```
 
 A filter can be persisted and read later. The serialized struct is formatted for usage with jiffy:
@@ -72,21 +83,23 @@ you might want to do so. They serialize in exactly the same way, but
 can't be mixed in memory.
 
 ```erlang
-1> Gb = hyper:insert(<<"foo">>, hyper:new(4, hyper_gb)).
-{hyper,4,{hyper_gb,{{1,{0,1,nil,nil}},16}}}
+1> Gb = hyper:insert(<<"foo">>, hyper:new(4, hyper_array)).
+{hyper,4, {hyper_array,{array,16,0,0, {{1,0,0,0,0,0,0,0,0,0},10,10,10,10,10,10,10,10,10,10}}}}
 2> B = hyper:insert(<<"foo">>, hyper:new(4, hyper_binary)).
 {hyper,4,
-       {hyper_binary,{dense,<<4,0,0,0,0,0,0,0,0,0,0,0>>,[],0,16}}}
+       {hyper_binary,{dense,<<4,0,0,0,0,0,0,0,0,0,0,0>>,[],0,4,16}}}
 3> hyper:to_json(Gb) =:= hyper:to_json(B).
 true
 4> hyper:union(Gb, B).
-** exception error: no case clause matching [{4,hyper_binary},{4,hyper_gb}]
+** exception error: no case clause matching [{4,hyper_binary},{4,hyper_array}]
      in function  hyper:union/1 (src/hyper.erl, line 65)
 ```
 
 ## Is it any good?
 
-Yes. It has been used in mAt Game Analytics we use it extensively.
+No idea ! I do not know anyone that uses it extensively, but it is relatively
+well tested. As far as i can tell, it is the only FOSS implementation that does
+precision reduction properly !
 
 ## Backends
 
@@ -97,10 +110,9 @@ comparison can be seen by running `make perf_report`, see below for
 the results from an i7-3770 at 3.4 GHz. Fill rate refers to how many
 registers has a value other than 0.
 
-* `hyper_binary`: Fixed memory usage (6 bits * 2^P), fastest on insert,
+- `hyper_binary`: Fixed memory usage (6 bits * 2^P), fastest on insert,
   union, cardinality and serialization. Best default choice.
-
-* `hyper_array`: Cardinality estimation is constant, but slower than
+- `hyper_array`: Cardinality estimation is constant, but slower than
   hyper_gb for low fill rates. Uses much more memory at lower fill
   rates, but stays constant from 25% and upwards.
 
@@ -112,47 +124,30 @@ correctly encodes/decodes the serialized filters.
 ```bash
 $ make perf_report
 ...
-
-module       P        card   fill      bytes  insert us   union ms    card ms    json ms
-hyper_array  15          1   0.00        520       4.10       0.00       4.74       3.83
-hyper_array  15        100   0.00      19536       1.56       0.10       4.71       3.99
-hyper_array  15        500   0.02      69328       1.44       0.43       4.63       4.46
-hyper_array  15       1000   0.03     107760       1.51       0.79       4.68       4.29
-hyper_array  15       2500   0.07     188384       1.35       1.79       4.70       5.16
-hyper_array  15       5000   0.14     261520       1.31       3.27       4.72       5.33
-hyper_array  15      10000   0.26     308072       1.21       5.45       4.99       6.90
-hyper_array  15      15000   0.37     320128       1.22       7.34       4.96       7.72
-hyper_array  15      25000   0.53     323384       1.21      11.07       5.18       8.42
-hyper_array  15      50000   0.78     323560       1.04      17.90       5.51       8.08
-hyper_array  15     100000   0.95     323560       1.00      26.93       5.60       7.70
-hyper_array  15    1000000   1.00     323560       0.72      51.65       5.77       7.77
-hyper_binary 15          1   0.00         88       3.40       0.00       6.06       2.23
-hyper_binary 15        100   0.00       4048       0.63       0.01       5.91       2.38
-hyper_binary 15        500   0.02      20048       0.50       0.01       5.67       2.58
-hyper_binary 15       1000   0.02      24576       2.13       0.00       2.72       1.33
-hyper_binary 15       2500   0.07      24576       1.54       1.97       2.72       1.95
-hyper_binary 15       5000   0.12      24576       1.23       2.40       2.71       2.77
-hyper_binary 15      10000   0.26      24576       1.10      11.16       2.95       4.46
-hyper_binary 15      15000   0.34      24576       1.11      12.30       2.75       5.48
-hyper_binary 15      25000   0.50      24576       0.95      11.97       2.79       5.83
-hyper_binary 15      50000   0.76      24576       0.92      13.55       2.81       5.65
-hyper_binary 15     100000   0.95      24576       0.79      11.74       2.59       5.16
-hyper_binary 15    1000000   1.00      24576       0.55      13.88       2.64       5.11
 ```
 
 ## Fork
 
-This is a fork of the original Hyper library by GameAnalytics. It was not maintained anymore.
+This is a fork of the original Hyper library by GameAnalytics. It was not
+maintained anymore.
 
-The main difference are a move to the `rand` module for tests and to `rebar3` as a build tool, in order to support OTP 23+.
+The main difference are a move to the `rand` module for tests and to `rebar3`
+as a build tool, in order to support OTP 23+.
 
-The `carray` backend was dropped, as it was never moved outside of experimental status and could not be serialised for a distributed use.
+The `carray` backend was dropped, as it was never moved outside of experimental
+status and could not be serialised for a distributed use. Some backends using
+NIF may come back in the future.
 
-The bisect implementation was dropped too. Its use case was limited and it forced a dependency on a library that was not maintained either.
+The bisect implementation was dropped too. Its use case was limited and it
+forced a dependency on a library that was not maintained either.
 
 The gb backend was dropped for the time being too.
 
-The estimator was rebuilt following this paper, as it was broken for any precision not 14): <https://arxiv.org/abs/1706.07290>.
-This should also provide better estimation across the board and cardinality.
+The estimator was rebuilt following this [paper by Otmar Ertl][], as it was
+brokenfor any precision not 14. This should also provide better estimation
+across the board for cardinality.
 
-[paper by Google]: http://static.googleusercontent.com/external_content/untrusted_dlcp/research.google.com/en//pubs/archive/40671.pdf
+The `reduce_precision` function has been rebuilt properly, as it was quite
+simply wrong. This fixed a lot of bugs for unions.
+
+[paper by Otmar Ertl]: https://arxiv.org/abs/1706.07290

@@ -46,6 +46,10 @@
     float().
 %% %% @doc: Sum of 2^-R where R is the value in each register.
 
+-callback register_histogram(hyper:registers()) -> map().
+%% %% @doc: A map with key the values possible for the register and values the
+%% number of register with that value.
+
 -callback zero_count(hyper:registers()) ->
     integer().
 %% %% @doc: Count of registers set to 0.

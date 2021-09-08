@@ -11,6 +11,7 @@
 -export([card/1, intersect_card/2]).
 -export([to_json/1, from_json/1, from_json/2, precision/1, bytes/1, is_hyper/1]).
 -export([compact/1, reduce_precision/2]).
+-export([generate_unique/1]).
 
 -type precision() :: 4..16.
 -type registers() :: any().
@@ -26,6 +27,7 @@
 -export([run_of_zeroes/1]).
 
 -define(DEFAULT_BACKEND, hyper_binary).
+-define(HLL_ALPHA_INF, 0.721347520444481703680). % constant for 0.5/ln(2)
 
 %%
 %% API
@@ -97,31 +99,19 @@ intersect_card(Left, Right) when Left#hyper.p =:= Right#hyper.p ->
 -spec card(filter()) -> float().
 card(#hyper{registers = {Mod, Registers0}, p = P}) ->
     M = trunc(pow(2, P)),
+    Qp1 = 65 - P,
     Registers = Mod:compact(Registers0),
+    RegisterHisto = Mod:register_histogram(Registers),
 
-    RegisterSum = Mod:register_sum(Registers),
-
-    E = alpha(M) * pow(M, 2) / RegisterSum,
-    Ep = case E =< 5 * M of
-           true ->
-               E - estimate_bias(E, P);
-           false ->
-               E
-         end,
-    V = Mod:zero_count(Registers),
-
-    H = case V of
-          0 ->
-              Ep;
-          _ ->
-              M * math:log(M / V)
-        end,
-    case H =< hyper_const:threshold(P) of
-      true ->
-          H;
-      false ->
-          Ep
-    end.
+    Z = M * tau(M - maps:get(Qp1, RegisterHisto,  0) / M),
+    %TODO: drop after Q = 64 - P in histo before folding
+    Z1 = lists:foldr(
+        fun({_K, V}, Acc) -> (Acc + V) * 0.5 end,
+        Z,
+        lists:keysort(1, maps:to_list(maps:without([0, Qp1], RegisterHisto)))
+    ),
+    Zf = Z1 + M * sigma(maps:get(0, RegisterHisto, 0) / M),
+    ?HLL_ALPHA_INF * M * M / Zf.
 
 precision(#hyper{p = Precision}) ->
     Precision.
@@ -164,6 +154,26 @@ from_json({Struct}, Mod) ->
 %% HELPERS
 %%
 
+generate_unique(N) ->
+    generate_unique(lists:usort(random_bytes(N)), N).
+
+generate_unique(L, N) ->
+    case length(L) of
+      N ->
+          L;
+      Less ->
+          generate_unique(lists:usort(random_bytes(N - Less) ++ L), N)
+    end.
+
+random_bytes(N) ->
+    random_bytes([], N).
+
+random_bytes(Acc, 0) ->
+    Acc;
+random_bytes(Acc, N) ->
+    Int = rand:uniform(100000000000000),
+    random_bytes([<<Int:64/integer>> | Acc], N - 1).
+
 alpha(16) ->
     0.673;
 alpha(32) ->
@@ -172,6 +182,33 @@ alpha(64) ->
     0.709;
 alpha(M) ->
     0.7213 / (1 + 1.079 / M).
+
+sigma(1.0) ->
+    infinity;
+sigma(X) ->
+    sigma_sum(X, first, X, 1.0).
+
+sigma_sum(Z, Z, _X, _Y) ->
+    Z;
+sigma_sum(Z, _Zp, X, Y) ->
+    X1 = X * X,
+    Z1 = (X1* Y) + Z,
+    sigma_sum(Z1, Z, X1, Y + Y).
+
+tau(0.0) ->
+    0.0;
+tau(1.0) ->
+    0.0;
+tau(X) ->
+    tau_sum((1 - X), first, X, 1.0) / 3.
+
+tau_sum(Z, Z, _X, _Y) ->
+    Z;
+tau_sum(Z, _Zp, X, Y) ->
+    X1 = math:sqrt(X),
+    Y1 = Y * 0.5,
+    Z1 = Z - (math:pow(1 - X1, 2) * Y1),
+    tau_sum(Z1, Z, X1, Y1).
 
 pow(X, Y) ->
     math:pow(X, Y).
