@@ -174,15 +174,6 @@ random_bytes(Acc, N) ->
     Int = rand:uniform(100000000000000),
     random_bytes([<<Int:64/integer>> | Acc], N - 1).
 
-alpha(16) ->
-    0.673;
-alpha(32) ->
-    0.697;
-alpha(64) ->
-    0.709;
-alpha(M) ->
-    0.7213 / (1 + 1.079 / M).
-
 sigma(1.0) ->
     infinity;
 sigma(X) ->
@@ -223,22 +214,3 @@ run_of_zeroes(I, B) ->
       _ ->
           I - 1
     end.
-
-estimate_bias(E, P) ->
-    BiasVector = hyper_const:bias_data(P),
-    EstimateVector = hyper_const:estimate_data(P),
-    NearestNeighbours = nearest_neighbours(E, EstimateVector),
-
-    lists:sum([element(Index, BiasVector) || Index <- NearestNeighbours]) /
-      length(NearestNeighbours).
-
-nearest_neighbours(E, Vector) ->
-    Distances = lists:map(fun (Index) ->
-                                  V = element(Index, Vector),
-                                  {pow(E - V, 2), Index}
-                          end,
-                          lists:seq(1, size(Vector))),
-    SortedDistances = lists:keysort(1, Distances),
-
-    {_, Indexes} = lists:unzip(lists:sublist(SortedDistances, 6)),
-    Indexes.
