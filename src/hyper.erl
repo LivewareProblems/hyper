@@ -39,7 +39,7 @@ new(P) ->
 
 -spec new(precision(), module()) -> filter().
 new(P, Mod) when 4 =< P andalso P =< 16 andalso is_atom(Mod) ->
-    #hyper{p = P, registers = {Mod, Mod:new(P)}}.
+    #hyper{p = P, registers = {Mod, hyper_register:new(Mod, P)}}.
 
 -spec is_hyper(filter()) -> boolean().
 is_hyper(#hyper{}) ->
@@ -56,7 +56,7 @@ insert(Value, #hyper{registers = {Mod, Registers}, p = P} = Hyper)
     ZeroCount = run_of_zeroes(RegisterValue) + 1,
 
     %% Registers are only allowed to increase, implement by backend
-    Hyper#hyper{registers = {Mod, Mod:set(Index, ZeroCount, Registers)}};
+    Hyper#hyper{registers = {Mod, hyper_register:set(Mod, Index, ZeroCount, Registers)}};
 insert(_Value, _Hyper) ->
     error(badarg).
 
@@ -78,7 +78,7 @@ union(Filters) when is_list(Filters) ->
                                 end,
                                 Filters),
           [First | _] = Filters,
-          First#hyper{registers = {Mod, Mod:max_merge(Registers)}};
+          First#hyper{registers = {Mod, hyper_register:max_merge(Mod, Registers)}};
       %% mixed P, but still must have same backend
       [{MinP, Mod} | _] ->
           FoldedFilters = lists:map(fun (#hyper{registers = {M, _}} = F) when M =:= Mod ->
@@ -100,8 +100,8 @@ intersect_card(Left, Right) when Left#hyper.p =:= Right#hyper.p ->
 card(#hyper{registers = {Mod, Registers0}, p = P}) ->
     M = trunc(pow(2, P)),
     Qp1 = 65 - P,
-    Registers = Mod:compact(Registers0),
-    RegisterHisto = Mod:register_histogram(Registers),
+    Registers = hyper_register:compact(Mod, Registers0),
+    RegisterHisto = hyper_register:register_histogram(Mod, Registers),
 
     Z = M * tau(M - maps:get(Qp1, RegisterHisto,  0) / M),
     %TODO: drop after Q = 64 - P in histo before folding
@@ -117,14 +117,14 @@ precision(#hyper{p = Precision}) ->
     Precision.
 
 bytes(#hyper{registers = {Mod, Registers}}) ->
-    Mod:bytes(Registers).
+    hyper_register:bytes(Mod, Registers).
 
 compact(#hyper{registers = {Mod, Registers}} = Hyper) ->
-    Hyper#hyper{registers = {Mod, Mod:compact(Registers)}}.
+    Hyper#hyper{registers = {Mod, hyper_register:compact(Mod, Registers)}}.
 
 reduce_precision(P, #hyper{p = OldP, registers = {Mod, Registers}} = Hyper)
     when P < OldP ->
-    Hyper#hyper{p = P, registers = {Mod, Mod:reduce_precision(P, Registers)}};
+    Hyper#hyper{p = P, registers = {Mod, hyper_register:reduce_precision(Mod, P, Registers)}};
 reduce_precision(P, #hyper{p = P} = Filter) ->
     Filter.
 
@@ -134,9 +134,9 @@ reduce_precision(P, #hyper{p = P} = Filter) ->
 
 -spec to_json(filter()) -> any().
 to_json(#hyper{p = P, registers = {Mod, Registers}}) ->
-    Compact = Mod:compact(Registers),
+    Compact = hyper_register:compact(Mod, Registers),
     {[{<<"p">>, P},
-      {<<"registers">>, base64:encode(zlib:gzip(Mod:encode_registers(Compact)))}]}.
+      {<<"registers">>, base64:encode(zlib:gzip(hyper_register:encode_registers(Mod, Compact)))}]}.
 
 -spec from_json(any()) -> filter().
 from_json(Struct) ->
@@ -146,7 +146,7 @@ from_json(Struct) ->
 from_json({Struct}, Mod) ->
     P = proplists:get_value(<<"p">>, Struct),
     Bytes = zlib:gunzip(base64:decode(proplists:get_value(<<"registers">>, Struct))),
-    Registers = Mod:decode_registers(Bytes, P),
+    Registers = hyper_register:decode_registers(Mod, Bytes, P),
 
     #hyper{p = P, registers = {Mod, Registers}}.
 
