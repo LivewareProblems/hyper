@@ -1,12 +1,13 @@
-{application, hyper,
- [{description, "Implementation of the HyperLogLog algorithm in Erlang"},
-  {vsn, "0.3.1"},
-  {registered, []},
-  {modules, []},
-  {applications, [
-                 kernel
-                 ,stdlib
-                 ]},
-  {licenses, ["MIT"]},
-  {links, [{"Github", "https://github.com/LivewareProblems/hyper"}]}
- ]}.
+{application, hyper, [
+    {description, "Implementation of the HyperLogLog algorithm in Erlang"},
+    {vsn, "0.3.1"},
+    {registered, []},
+    {modules, []},
+    {applications, [
+        kernel,
+        stdlib
+    ]},
+    {licenses, ["MIT"]},
+    {links, [{"Github", "https://github.com/LivewareProblems/hyper"}]},
+    {doc, "doc"}
+]}.

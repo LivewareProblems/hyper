@@ -101,6 +101,24 @@ No idea ! I do not know anyone that uses it extensively, but it is relatively
 well tested. As far as i can tell, it is the only FOSS implementation that does
 precision reduction properly !
 
+## Hacking
+
+### Documentation
+
+We use ex_doc for documentation. In order to generate the docs, you need to install it
+
+```bash
+mix escript.install hex ex_doc
+ex_doc --version
+```
+
+Then generate the docs
+
+```bash
+rebar3 edoc
+ex_doc "hyper" "PROJECT_VERSION" _build/default/lib/<app>/ebin
+```
+
 ## Backends
 
 Effort has been spent on implementing different backends in the
