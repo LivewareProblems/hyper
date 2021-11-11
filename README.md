@@ -112,11 +112,10 @@ mix escript.install hex ex_doc
 ex_doc --version
 ```
 
-Then generate the docs
+Then generate the docs, after targetting the correct version in docs.sh
 
 ```bash
-rebar3 edoc
-ex_doc "hyper" "PROJECT_VERSION" _build/default/lib/<app>/ebin
+docs.sh
 ```
 
 ## Backends
