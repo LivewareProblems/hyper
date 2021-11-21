@@ -30,13 +30,8 @@ using a single estimator for the whole range of cardinalities.
 - [x] Fix `reduce_precision`
 - [x] add `reduce_precision` for array, allowing unions
 - [ ] Better document the main module
-<<<<<<< HEAD
-- [ ] Move documentation to ExDoc
-- [x] Delete dead code
-=======
 - [x] Move documentation to ExDoc
-- [ ] Delete dead code
->>>>>>> 23f787d (move test to ct and proper)
+- [x] Delete dead code
 - [ ] Rework test suite to be nice to modify
 - [ ] Rework Intersection using this [paper by Otmar Ertl][]
 - [ ] Redo benchmarks
