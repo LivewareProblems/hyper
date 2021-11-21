@@ -1,4 +1,4 @@
--module(prop_test_SUITE_in_progress).
+-module(prop_test_not_suite_in_progress).
 -compile(export_all).
 
 -include_lib("common_test/include/ct.hrl").
