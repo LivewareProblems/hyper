@@ -15,6 +15,7 @@
     max_merge/2, max_merge/3,
     reduce_precision/3,
     register_sum/2,
+    register_histogram/2,
     zero_count/2,
     encode_registers/2,
     decode_registers/3,
@@ -72,6 +73,7 @@
 %% @doc: A map with key the values possible for the register and values the
 %% number of register with that value.
 -callback register_histogram(hyper:registers()) -> map().
+
 %% @doc: Count of registers set to 0.
 -callback zero_count(hyper:registers()) ->
     integer().
@@ -134,6 +136,12 @@ reduce_precision(RegisterImpl, Precision, Registers) ->
 -spec register_sum(t(), hyper:registers()) -> float().
 register_sum(RegisterImpl, Registers) ->
     RegisterImpl:register_sum(Registers).
+
+%% @doc: A map with key the values possible for the register and values the
+%% number of register with that value.
+-spec register_histogram(t(), hyper:registers()) -> map().
+register_histogram(RegisterImpl, Registers) ->
+    RegisterImpl:register_histogram(Registers).
 
 %% @doc: Count of registers set to 0.
 -spec zero_count(t(), hyper:registers()) -> integer().
