@@ -15,8 +15,9 @@
 
 -type precision() :: 4..16.
 -type registers() :: any().
+-type version() :: atom().
 
--record(hyper, {p :: precision(), registers :: {module(), registers()}}).
+-record(hyper, {p :: precision(), v :: version(), registers :: {module(), registers()}}).
 
 -type value() :: binary().
 -type filter() :: #hyper{}.
@@ -27,6 +28,8 @@
 -export([run_of_zeroes/1]).
 
 -define(DEFAULT_BACKEND, hyper_binary).
+-define(DEFAULT_VERSION, 'sha-v1').
+
 % constant for 0.5/ln(2)
 -define(HLL_ALPHA_INF, 0.721347520444481703680).
 
@@ -36,11 +39,15 @@
 
 -spec new(precision()) -> filter().
 new(P) ->
-    new(P, ?DEFAULT_BACKEND).
+    new(P, ?DEFAULT_BACKEND, ?DEFAULT_VERSION).
 
 -spec new(precision(), module()) -> filter().
-new(P, Mod) when 4 =< P andalso P =< 16 andalso is_atom(Mod) ->
-    #hyper{p = P, registers = {Mod, hyper_register:new(Mod, P)}}.
+new(P, Mod) ->
+    new(P, Mod, ?DEFAULT_VERSION).
+
+-spec new(precision(), module(), version()) -> filter().
+new(P, Mod, Version) when 4 =< P andalso P =< 16 andalso is_atom(Mod) ->
+    #hyper{p = P, v = Version, registers = {Mod, hyper_register:new(Mod, P)}}.
 
 -spec is_hyper(filter()) -> boolean().
 is_hyper(#hyper{}) ->
