@@ -6,7 +6,7 @@
 
 %%-compile(native).
 
--export([new/1, new/2, insert/2, insert_many/2]).
+-export([new/1, new/2, new/3, insert/2, insert_many/2]).
 -export([union/1, union/2]).
 -export([card/1, intersect_card/2]).
 -export([to_json/1, from_json/1, from_json/2, precision/1, bytes/1, is_hyper/1]).
@@ -152,10 +152,11 @@ reduce_precision(P, #hyper{p = P} = Filter) ->
 %%
 
 -spec to_json(filter()) -> any().
-to_json(#hyper{p = P, registers = {Mod, Registers}}) ->
+to_json(#hyper{p = P, v = V, registers = {Mod, Registers}}) ->
     Compact = hyper_register:compact(Mod, Registers),
     {[
         {<<"p">>, P},
+        {<<"v">>, atom_to_binary(V)},
         {<<"registers">>, base64:encode(zlib:gzip(hyper_register:encode_registers(Mod, Compact)))}
     ]}.
 
@@ -166,10 +167,11 @@ from_json(Struct) ->
 -spec from_json(any(), module()) -> filter().
 from_json({Struct}, Mod) ->
     P = proplists:get_value(<<"p">>, Struct),
+    V = binary_to_atom(proplists:get_value(<<"v">>, Struct)),
     Bytes = zlib:gunzip(base64:decode(proplists:get_value(<<"registers">>, Struct))),
     Registers = hyper_register:decode_registers(Mod, Bytes, P),
 
-    #hyper{p = P, registers = {Mod, Registers}}.
+    #hyper{p = P, v = V, registers = {Mod, Registers}}.
 
 %%
 %% HELPERS

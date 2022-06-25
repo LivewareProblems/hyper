@@ -6,7 +6,7 @@
 -include_lib("stdlib/include/assert.hrl").
 
 % copy of #hyper in hyper.erl
--record(hyper, {p, registers}).
+-record(hyper, {p, v, registers}).
 
 all() ->
     [
@@ -310,7 +310,11 @@ bad_serialization_t(Config) ->
                         RawBytes
                 end,
             H = hyper:from_json(
-                {[{<<"p">>, 15}, {<<"registers">>, base64:encode(zlib:gzip(Raw))}]},
+                {[
+                    {<<"p">>, 15},
+                    {<<"v">>, <<"sha-v1">>},
+                    {<<"registers">>, base64:encode(zlib:gzip(Raw))}
+                ]},
                 Mod
             ),
             {Mod, Registers} = H#hyper.registers,
@@ -326,7 +330,11 @@ bad_serialization_t(Config) ->
             ?assertEqual(Raw, Mod:encode_registers(Registers)),
 
             ?assertEqual(
-                {[{<<"p">>, 15}, {<<"registers">>, base64:encode(zlib:gzip(Raw))}]},
+                {[
+                    {<<"p">>, 15},
+                    {<<"v">>, <<"sha-v1">>},
+                    {<<"registers">>, base64:encode(zlib:gzip(Raw))}
+                ]},
                 hyper:to_json(H)
             )
         end
