@@ -24,9 +24,6 @@
 
 -export_type([filter/0, precision/0, registers/0]).
 
-%% Exported for testing
--export([run_of_zeroes/1]).
-
 -define(DEFAULT_BACKEND, hyper_binary).
 -define(DEFAULT_VERSION, 'sha-v1').
 
@@ -62,10 +59,8 @@ insert(Value, #hyper{registers = {Mod, Registers}, p = P} = Hyper) when
     Hash = crypto:hash(sha, Value),
     <<Index:P, RegisterValue:(64 - P)/bitstring, _/bitstring>> = Hash,
 
-    ZeroCount = run_of_zeroes(RegisterValue) + 1,
-
     %% Registers are only allowed to increase, implement by backend
-    Hyper#hyper{registers = {Mod, hyper_register:set(Mod, Index, ZeroCount, Registers)}};
+    Hyper#hyper{registers = {Mod, hyper_register:set(Mod, Index, RegisterValue, Registers)}};
 insert(_Value, _Hyper) ->
     error(badarg).
 
@@ -226,14 +221,3 @@ tau_sum(Z, _Zp, X, Y) ->
 
 pow(X, Y) ->
     math:pow(X, Y).
-
-run_of_zeroes(B) ->
-    run_of_zeroes(1, B).
-
-run_of_zeroes(I, B) ->
-    case B of
-        <<0:I, _/bitstring>> ->
-            run_of_zeroes(I + 1, B);
-        _ ->
-            I - 1
-    end.

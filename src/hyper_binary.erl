@@ -23,7 +23,6 @@
     encode_registers/1,
     decode_registers/2,
     % TODO handle this better once precision is handled at the correct level
-    m/1,
     empty_binary/1,
     max_registers/1
 ]).
@@ -38,7 +37,7 @@ new(P) ->
     new_buffer(P).
 
 new_buffer(P) ->
-    M = m(P),
+    M = hyper_utils:m(P),
     % 5 words for each entry
     ConvertThreshold = M div (5 * 8),
     #buffer{
@@ -49,7 +48,7 @@ new_buffer(P) ->
     }.
 
 new_dense(P) ->
-    M = m(P),
+    M = hyper_utils:m(P),
     T = max(trunc(M * ?MERGE_THRESHOLD), 16),
     #dense{
         b = empty_binary(M),
@@ -60,9 +59,11 @@ new_dense(P) ->
     }.
 
 set(Index, Value, #buffer{buf = [{Index, OldValue} | Rest]} = Buffer) ->
-    Buffer#buffer{buf = [{Index, max(Value, OldValue)} | Rest]};
+    NewVal = hyper_utils:run_of_zeroes(Value),
+    Buffer#buffer{buf = [{Index, max(NewVal, OldValue)} | Rest]};
 set(Index, Value, #buffer{buf = Buf, buf_size = BufSize} = Buffer) ->
-    NewBuffer = Buffer#buffer{buf = [{Index, Value} | Buf], buf_size = BufSize + 1},
+    NewVal = hyper_utils:run_of_zeroes(Value),
+    NewBuffer = Buffer#buffer{buf = [{Index, NewVal} | Buf], buf_size = BufSize + 1},
     case NewBuffer#buffer.buf_size < NewBuffer#buffer.convert_threshold of
         true ->
             NewBuffer;
@@ -73,9 +74,11 @@ set(Index, Value, #dense{buf = Buf, buf_size = BufSize} = Dense) ->
     LeftOffset = Index * ?VALUE_SIZE,
     <<_:LeftOffset/bitstring, R:?VALUE_SIZE/integer, _/bitstring>> = Dense#dense.b,
 
+    NewVal = hyper_utils:run_of_zeroes(Value),
+
     if
-        R < Value ->
-            New = Dense#dense{buf = [{Index, Value} | Buf], buf_size = BufSize + 1},
+        R < NewVal ->
+            New = Dense#dense{buf = [{Index, NewVal} | Buf], buf_size = BufSize + 1},
             case New#dense.buf_size < Dense#dense.merge_threshold of
                 true ->
                     New;
@@ -181,13 +184,24 @@ reduce_precision(NewP, #buffer{p = OldP} = Buffer) ->
 %% http://research.neustar.biz/2012/09/12/set-operations-on-hlls-of-different-sizes/
 %% NOTE: this function does not perform the max_registers step
 register_fold(ChangeP, B) ->
-    fold(
-        fun(I, V, Acc) ->
-            ChangeV = I rem m(ChangeP),
-            [{I bsr ChangeP, changeV(V, ChangeV, ChangeP)} | Acc]
-        end,
-        [],
-        B
+    ChangeM = hyper_utils:m(ChangeP),
+    element(
+        3,
+        fold(
+            fun
+                (I, V, {_Index, CurrentList, Acc}) when CurrentList == [] ->
+                    {I, [V], Acc};
+                (I, V, {Index, CurrentList, Acc}) when I - Index < ChangeM ->
+                    {Index, [V | CurrentList], Acc};
+                (I, V, {_Index, CurrentList, Acc}) ->
+                    {I, [V], [
+                        {I bsr ChangeP, hyper_utils:changeV(lists:reverse(CurrentList), ChangeP)}
+                        | Acc
+                    ]}
+            end,
+            {0, [], []},
+            B
+        )
     ).
 
 register_sum(B) ->
@@ -253,7 +267,7 @@ encode_registers(#dense{b = B}) ->
     <<<<I:8/integer>> || <<I:?VALUE_SIZE/integer>> <= B>>.
 
 decode_registers(AllBytes, P) ->
-    M = m(P),
+    M = hyper_utils:m(P),
     Bytes =
         case AllBytes of
             <<B:M/binary>> ->
@@ -272,9 +286,6 @@ bytes(#buffer{} = Buffer) ->
 %%
 %% INTERNALS
 %%
-
-m(P) ->
-    trunc(math:pow(2, P)).
 
 empty_binary(M) ->
     list_to_bitstring([<<0:?VALUE_SIZE/integer>> || _ <- lists:seq(0, M - 1)]).
@@ -295,16 +306,6 @@ max_registers(Buf) ->
             )
         )
     ).
-
-changeV(0, _ChangeV, _ChangeP) ->
-    0;
-changeV(V, 0, ChangeP) ->
-    V + ChangeP;
-changeV(_V, ChangeV, ChangeP) ->
-    leading_zeroes(ChangeV, ChangeP).
-
-leading_zeroes(V, Max) ->
-    Max - trunc(math:log2(V)).
 
 buffer2dense(#buffer{buf = Buf, p = P}) ->
     Dense = new_dense(P),
