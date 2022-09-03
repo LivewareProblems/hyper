@@ -10,7 +10,7 @@
 %%
 
 backends() ->
-    [hyper_array, hyper_binary].
+    [hyper_binary].
 
 gen_values() ->
     ?SIZED(Size, gen_values(Size)).
