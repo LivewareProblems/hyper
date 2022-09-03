@@ -32,7 +32,7 @@ using a single estimator for the whole range of cardinalities.
 - [ ] Better document the main module
 - [x] Move documentation to ExDoc
 - [x] Delete dead code
-- [ ] Rework test suite to be nice to modify
+- [x] Rework test suite to be nice to modify
 - [ ] Rework Intersection using this [paper by Otmar Ertl][]
 - [ ] Redo benchmarks
 
@@ -78,22 +78,10 @@ A filter can be persisted and read later. The serialized struct is formatted for
 true
 ```
 
+**As of today, we only support the binary backend. More to come**
 You can select a different backend. See below for a description of why
 you might want to do so. They serialize in exactly the same way, but
 can't be mixed in memory.
-
-```erlang
-1> Gb = hyper:insert(<<"foo">>, hyper:new(4, hyper_array)).
-{hyper,4, {hyper_array,{array,16,0,0, {{1,0,0,0,0,0,0,0,0,0},10,10,10,10,10,10,10,10,10,10}}}}
-2> B = hyper:insert(<<"foo">>, hyper:new(4, hyper_binary)).
-{hyper,4,
-       {hyper_binary,{dense,<<4,0,0,0,0,0,0,0,0,0,0,0>>,[],0,4,16}}}
-3> hyper:to_json(Gb) =:= hyper:to_json(B).
-true
-4> hyper:union(Gb, B).
-** exception error: no case clause matching [{4,hyper_binary},{4,hyper_array}]
-     in function  hyper:union/1 (src/hyper.erl, line 65)
-```
 
 ## Is it any good?
 
@@ -121,27 +109,17 @@ docs.sh
 ## Backends
 
 Effort has been spent on implementing different backends in the
-pursuit of finding the right performance trade-off. The estimate will
-always be the same, regardless of backend. A simple performance
-comparison can be seen by running `make perf_report`, see below for
-the results from an i7-3770 at 3.4 GHz. Fill rate refers to how many
+pursuit of finding the right performance trade-off. Fill rate refers to how many
 registers has a value other than 0.
 
 - `hyper_binary`: Fixed memory usage (6 bits * 2^P), fastest on insert,
   union, cardinality and serialization. Best default choice.
-- `hyper_array`: Cardinality estimation is constant, but slower than
-  hyper_gb for low fill rates. Uses much more memory at lower fill
-  rates, but stays constant from 25% and upwards.
 
-You can also implement your own backend. In `hyper_test` theres a
+You can also implement your own backend. In `test` theres a
 bunch of tests run for all backends, including some PropEr tests. The
 test suite will ensure your backend gives correct estimates and
 correctly encodes/decodes the serialized filters.
 
-```bash
-$ make perf_report
-...
-```
 
 ## Fork
 
@@ -160,8 +138,10 @@ forced a dependency on a library that was not maintained either.
 
 The gb backend was dropped for the time being too.
 
+The Array backend was dropped for the time being too.
+
 The estimator was rebuilt following this [paper by Otmar Ertl][], as it was
-brokenfor any precision not 14. This should also provide better estimation
+broken for any precision not 14. This should also provide better estimation
 across the board for cardinality.
 
 The `reduce_precision` function has been rebuilt properly, as it was quite

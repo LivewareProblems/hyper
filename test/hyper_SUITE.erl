@@ -70,10 +70,8 @@ backend_t(_Config) ->
     P = 9,
     M = trunc(math:pow(2, P)),
 
-    Array = hyper:compact(hyper:insert_many(Values, hyper:new(P, hyper_array))),
     Binary = hyper:compact(hyper:insert_many(Values, hyper:new(P, hyper_binary))),
 
-    {hyper_array, ArrayRegisters} = Array#hyper.registers,
     {hyper_binary, BinaryRegisters} = Binary#hyper.registers,
 
     ExpectedRegisters = lists:foldl(
@@ -103,15 +101,9 @@ backend_t(_Config) ->
         end
      || I <- lists:seq(0, M - 1)
     ]),
-    ?assertEqual(ExpectedBytes, hyper_array:encode_registers(ArrayRegisters)),
     ?assertEqual(ExpectedBytes, hyper_binary:encode_registers(BinaryRegisters)),
 
-    ?assertEqual(Array, hyper:from_json(hyper:to_json(Array), hyper_array)),
-    ?assertEqual(Binary, hyper:from_json(hyper:to_json(Binary), hyper_binary)),
-
-    ?assertEqual(hyper:to_json(Binary), hyper:to_json(Array)),
-
-    ?assertEqual(hyper:card(Binary), hyper:card(Array)).
+    ?assertEqual(Binary, hyper:from_json(hyper:to_json(Binary), hyper_binary)).
 
 encoding_t(_Config) ->
     [
@@ -192,18 +184,6 @@ many_union_t(_Config) ->
     NumSets = 3,
 
     Input = generate_unique(Card),
-    %TODO find out why this fail, probably an error in the max_merge case
-    % % ct:pal("~w", Input),
-    % erlang:display(
-    %     lists:map(
-    %         fun(I) ->
-    %             X = crypto:hash(sha, I),
-    %             Y = hyper_utils:run_of_zeroes(X),
-    %             {X, Y}
-    %         end,
-    %         Input
-    %     )
-    % ),
     [
         begin
             M = trunc(math:pow(2, P)),
@@ -364,7 +344,7 @@ bad_serialization_t(Config) ->
 %%
 
 backends() ->
-    [hyper_array, hyper_binary].
+    [hyper_binary].
 
 %%
 %% HELPERS

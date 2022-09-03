@@ -32,7 +32,13 @@ gen_getset(0, _P) ->
     [];
 gen_getset(Size, P) ->
     M = trunc(math:pow(2, P)),
-    ?LET({I, V}, {choose(0, M - 1), choose(1, 6)}, [{I, V} | gen_getset(Size - 1, P)]).
+    ?LET(
+        {I, V},
+        {choose(0, M - 1), choose(1, 6)},
+        ?LET(X, trunc(math:pow(2, 64 - V - P + 1)) - 1, [
+            {I, <<0:V, X:(64 - V - P)>>} | gen_getset(Size - 1, P)
+        ])
+    ).
 
 prop_set() ->
     ?FORALL(
@@ -43,19 +49,20 @@ prop_set() ->
             gen_getset(P),
             begin
                 R = lists:foldl(
-                    fun({Index, ZeroCount}, Register) ->
-                        Mod:set(Index, ZeroCount, Register)
+                    fun({Index, BinaryValue}, Register) ->
+                        Mod:set(Index, BinaryValue, Register)
                     end,
                     Mod:new(P),
                     Values
                 ),
                 Max = lists:foldl(
                     fun({I, V}, Acc) ->
+                        RoZV = hyper_utils:run_of_zeroes(V),
                         case dict:find(I, Acc) of
-                            {ok, OtherV} when OtherV >= V ->
+                            {ok, RoZOtherV} when RoZOtherV >= RoZV ->
                                 Acc;
                             _ ->
-                                dict:store(I, V, Acc)
+                                dict:store(I, RoZV, Acc)
                         end
                     end,
                     dict:new(),
@@ -116,22 +123,6 @@ prop_union_binary() ->
         end
     ).
 
-prop_union_array() ->
-    ?FORALL(
-        {P, NumFilters, Values},
-        {choose(4, 16), choose(2, 5), gen_values()},
-        begin
-            Filters = lists:map(
-                fun(Vs) ->
-                    hyper:insert_many(Vs, hyper:new(P, hyper_array))
-                end,
-                partition(NumFilters, Values)
-            ),
-            Filter = hyper:insert_many(Values, hyper:new(P, hyper_array)),
-            Union = hyper:union(Filters),
-            hyper:card(Filter) =:= hyper:card(Union)
-        end
-    ).
 %%
 %% HELPERS
 %%

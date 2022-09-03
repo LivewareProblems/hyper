@@ -22,7 +22,6 @@
     zero_count/1,
     encode_registers/1,
     decode_registers/2,
-    % TODO handle this better once precision is handled at the correct level
     empty_binary/1,
     max_registers/1
 ]).
