@@ -1,5 +1,11 @@
 # Changelog pre v1
 
+## 0.6.0 [2022-09-27]
+
+### Enhancements
+
+* Added documentation to the main module
+
 ## 0.5.0 (2022-09-02)
 
 ### Enhancements
