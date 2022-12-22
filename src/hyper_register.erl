@@ -68,7 +68,7 @@
 -callback bytes(hyper:registers()) ->
     integer().
 
--callback precision(hyper:registes()) -> integer().
+-callback precision(hyper:registers()) -> integer().
 
 %% @doc: Creates a new instance of the backend. The return value of
 %% this function will be passed to all functions in this module.
