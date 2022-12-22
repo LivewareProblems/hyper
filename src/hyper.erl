@@ -252,7 +252,7 @@ reduce_precision(P, #hyper{registers = {Mod, Registers}} = Hyper) ->
 %% @doc Serialize the `hyper' structure to a json friendly format that can be
 %% decoded with {@link from_json/2}
 %%
-%% Do not use, this is going to be replaced with better solution in 1.0
+%% Do not use, this is going to be replaced with better solution in the future
 -spec to_json(filter()) -> any().
 to_json(#hyper{v = V, registers = {Mod, Registers}}) ->
     P = hyper_register:precision(Mod, Registers),
@@ -269,7 +269,7 @@ to_json(#hyper{v = V, registers = {Mod, Registers}}) ->
 %%
 %% Equivalent to `from_json(Struct, hyper_binary)'
 %%
-%% Do not use, this is going to be replaced with better solution in 1.0
+%% Do not use, this is going to be replaced with better solution in the future
 -spec from_json(any()) -> filter().
 from_json(Struct) ->
     from_json(Struct, ?DEFAULT_BACKEND).
@@ -278,7 +278,7 @@ from_json(Struct) ->
 %% @doc Deserialize the json friendly format from {@link to_json/1} to a `hyper'
 %% structure, with `Mod' as backend
 %%
-%% Do not use, this is going to be replaced with better solution in 1.0
+%% Do not use, this is going to be replaced with better solution in the future
 -spec from_json(any(), module()) -> filter().
 from_json({Struct}, Mod) ->
     P = proplists:get_value(<<"p">>, Struct),

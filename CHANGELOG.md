@@ -1,6 +1,6 @@
 # Changelog pre v1
 
-## Oncoming []
+## 1.0.0 [2022-12-22]
 
 * BREAKING CHANGE. Refactored precision into the backend, to allow each backend to have access to the precision information for their internal work. This means there is now a `precision/1` callback that every backend need to implement.
 
