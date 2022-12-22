@@ -6,7 +6,7 @@
 -include_lib("stdlib/include/assert.hrl").
 
 % copy of #hyper in hyper.erl
--record(hyper, {p, v, registers}).
+-record(hyper, {v, registers}).
 
 all() ->
     [
@@ -38,12 +38,17 @@ basic_t(_Config) ->
 serialization_t(_Config) ->
     Mod = hyper_binary,
     Hyper = hyper:compact(hyper:insert_many(generate_unique(10), hyper:new(5, Mod))),
+    HyperJson = (hyper:from_json(hyper:to_json(Hyper), Mod)),
 
     ?assertEqual(
         trunc(hyper:card(Hyper)),
-        trunc(hyper:card(hyper:from_json(hyper:to_json(Hyper), Mod)))
+        trunc(hyper:card(HyperJson))
     ),
-    ?assertEqual(Hyper#hyper.p, (hyper:from_json(hyper:to_json(Hyper), Mod))#hyper.p).
+    {Mod, Regs} = Hyper#hyper.registers,
+    P = hyper_register:precision(Mod, Regs),
+    {Mod, RegsJson} = HyperJson#hyper.registers,
+    PJson = hyper_register:precision(Mod, RegsJson),
+    ?assertEqual(P, PJson).
 
 reduce_precision_t(_Config) ->
     rand:seed(exsss, {1, 2, 3}),

@@ -19,7 +19,8 @@
     zero_count/2,
     encode_registers/2,
     decode_registers/3,
-    bytes/2
+    bytes/2,
+    precision/2
 ]).
 
 -callback set(
@@ -66,6 +67,8 @@
 
 -callback bytes(hyper:registers()) ->
     integer().
+
+-callback precision(hyper:registes()) -> integer().
 
 %% @doc: Creates a new instance of the backend. The return value of
 %% this function will be passed to all functions in this module.
@@ -139,3 +142,7 @@ decode_registers(RegisterImpl, Encoded, Precision) ->
 -spec bytes(t(), hyper:registers()) -> integer().
 bytes(RegisterImpl, Registers) ->
     RegisterImpl:bytes(Registers).
+
+-spec precision(t(), hyper:registers()) -> integer().
+precision(RegisterImpl, Registers) ->
+    RegisterImpl:precision(Registers).

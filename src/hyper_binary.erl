@@ -23,14 +23,17 @@
     encode_registers/1,
     decode_registers/2,
     empty_binary/1,
-    max_registers/1
+    max_registers/1,
+    precision/1
 ]).
 
 -define(VALUE_SIZE, 6).
 -define(MERGE_THRESHOLD, 0.05).
 
--record(buffer, {buf, buf_size, p, convert_threshold}).
--record(dense, {b, buf, buf_size, p, merge_threshold}).
+-type precision() :: 4..16.
+
+-record(buffer, {buf, buf_size, p :: precision(), convert_threshold}).
+-record(dense, {b, buf, buf_size, p :: precision(), merge_threshold}).
 
 new(P) ->
     new_buffer(P).
@@ -281,6 +284,11 @@ bytes(#dense{b = B}) ->
     erlang:byte_size(B);
 bytes(#buffer{} = Buffer) ->
     erts_debug:flat_size(Buffer) * 8.
+
+precision(#dense{p = P}) ->
+    P;
+precision(#buffer{p = P}) ->
+    P.
 
 %%
 %% INTERNALS

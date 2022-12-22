@@ -56,7 +56,7 @@
 -type registers() :: any().
 -type version() :: atom().
 
--record(hyper, {p :: precision(), v :: version(), registers :: {module(), registers()}}).
+-record(hyper, {v :: version(), registers :: {module(), registers()}}).
 
 -type value() :: binary().
 -type filter() :: #hyper{}.
@@ -106,7 +106,7 @@ new(P, Mod) ->
 %% versionning for custom backends or for custom versionning problems.
 -spec new(precision(), module(), version()) -> filter().
 new(P, Mod, Version) when 4 =< P andalso P =< 16 andalso is_atom(Mod) ->
-    #hyper{p = P, v = Version, registers = {Mod, hyper_register:new(Mod, P)}}.
+    #hyper{v = Version, registers = {Mod, hyper_register:new(Mod, P)}}.
 
 %% @doc return `true' if the structure passed is a `hyper' structure. `false'
 %% otherwise
@@ -118,9 +118,10 @@ is_hyper(_) ->
 
 %% @doc Insert `Value' inside the Hyper structure passed.
 -spec insert(value(), filter()) -> filter().
-insert(Value, #hyper{registers = {Mod, Registers}, p = P} = Hyper) when
+insert(Value, #hyper{registers = {Mod, Registers}} = Hyper) when
     is_binary(Value)
 ->
+    P = hyper_register:precision(Mod, Registers),
     Hash = crypto:hash(sha, Value),
     <<Index:P, RegisterValue:(64 - P)/bitstring, _/bitstring>> = Hash,
 
@@ -141,8 +142,8 @@ union(Filters) when is_list(Filters) ->
     case
         lists:usort(
             lists:map(
-                fun(#hyper{p = P, registers = {Mod, _}}) ->
-                    {P, Mod}
+                fun(#hyper{registers = {Mod, Registers}}) ->
+                    {hyper_register:precision(Mod, Registers), Mod}
                 end,
                 Filters
             )
@@ -184,12 +185,20 @@ union(Small, Big) ->
 %% using the inclusion/exclusion principle. Use with caution as the precision
 %% of this methods is fairly limited.
 -spec intersect_card(filter(), filter()) -> float().
-intersect_card(Left, Right) when Left#hyper.p =:= Right#hyper.p ->
-    max(0.0, card(Left) + card(Right) - card(union(Left, Right))).
+intersect_card(
+    Left = #hyper{registers = {ModLeft, RegLeft}}, Right = #hyper{registers = {ModRight, RegRight}}
+) ->
+    PLeft = hyper_register:precision(ModLeft, RegLeft),
+    PRight = hyper_register:precision(ModRight, RegRight),
+    case PLeft =:= PRight of
+        true -> max(0.0, card(Left) + card(Right) - card(union(Left, Right)));
+        false -> error(not_equal_precision)
+    end.
 
 %% @doc Estimate the cardinality of a  `hyper' structure
 -spec card(filter()) -> float().
-card(#hyper{registers = {Mod, Registers0}, p = P}) ->
+card(#hyper{registers = {Mod, Registers0}}) ->
+    P = hyper_register:precision(Mod, Registers0),
     M = trunc(pow(2, P)),
     Qp1 = 65 - P,
     Registers = hyper_register:compact(Mod, Registers0),
@@ -206,8 +215,8 @@ card(#hyper{registers = {Mod, Registers0}, p = P}) ->
     ?HLL_ALPHA_INF * M * M / Zf.
 
 %% @doc return the precision of the `hyper' structure passed.
-precision(#hyper{p = Precision}) ->
-    Precision.
+precision(#hyper{registers = {Mod, Registers}}) ->
+    hyper_register:precision(Mod, Registers).
 
 %% @doc return the size in bytes of the `hyper' structure in memory
 bytes(#hyper{registers = {Mod, Registers}}) ->
@@ -224,12 +233,16 @@ compact(#hyper{registers = {Mod, Registers}} = Hyper) ->
 %% to fill the reduced precision one.
 %% That said, reducing precision does grow the error in the estimator, and
 %% there is no way to get it back. Do this knowing you are losing precision.
-reduce_precision(P, #hyper{p = OldP, registers = {Mod, Registers}} = Hyper) when
-    P < OldP
-->
-    Hyper#hyper{p = P, registers = {Mod, hyper_register:reduce_precision(Mod, P, Registers)}};
-reduce_precision(P, #hyper{p = P} = Filter) ->
-    Filter.
+reduce_precision(P, #hyper{registers = {Mod, Registers}} = Hyper) ->
+    OldP = hyper_register:precision(Mod, Registers),
+    case {P, OldP} of
+        {P1, P2} when P1 =:= P2 ->
+            Hyper;
+        {P1, P2} when P1 < P2 ->
+            Hyper#hyper{registers = {Mod, hyper_register:reduce_precision(Mod, P, Registers)}};
+        _ ->
+            error(new_precision_superior_to_old)
+    end.
 
 %%
 %% SERIALIZATION
@@ -241,7 +254,8 @@ reduce_precision(P, #hyper{p = P} = Filter) ->
 %%
 %% Do not use, this is going to be replaced with better solution in 1.0
 -spec to_json(filter()) -> any().
-to_json(#hyper{p = P, v = V, registers = {Mod, Registers}}) ->
+to_json(#hyper{v = V, registers = {Mod, Registers}}) ->
+    P = hyper_register:precision(Mod, Registers),
     Compact = hyper_register:compact(Mod, Registers),
     {[
         {<<"p">>, P},
@@ -272,7 +286,7 @@ from_json({Struct}, Mod) ->
     Bytes = zlib:gunzip(base64:decode(proplists:get_value(<<"registers">>, Struct))),
     Registers = hyper_register:decode_registers(Mod, Bytes, P),
 
-    #hyper{p = P, v = V, registers = {Mod, Registers}}.
+    #hyper{v = V, registers = {Mod, Registers}}.
 
 %%
 %% HELPERS
